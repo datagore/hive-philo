@@ -22,7 +22,11 @@ $(NAME): $(OBJ)
 
 .PHONY: test
 test: all
-	./$(NAME) 5 500 100 100
+	./$(NAME) 5 500 100 100 5
+
+.PHONY: helgrind
+helgrind: all
+	valgrind --tool=helgrind ./$(NAME) 5 500 100 100
 
 .PHONY: all clean fclean re
 .SECONDARY: $(OBJ)
