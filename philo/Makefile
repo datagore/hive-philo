@@ -1,5 +1,5 @@
 SRC := main.c
-OBJ := $(SRC:src/%.c=src/%.o)
+OBJ := $(SRC:%.c=%.o)
 NAME := philo
 CFLAGS := -Wall -Wextra -Werror
 LDFLAGS := -pthread
@@ -17,8 +17,12 @@ re: fclean all
 $(NAME): $(OBJ)
 	$(CC) $^ -o $@ $(LDFLAGS)
 
-%.o: %.c
+%.o: %.c philo.h
 	$(CC) -c $< -o $@ $(CFLAGS)
+
+.PHONY: test
+test: all
+	./$(NAME) 5 500 100 100
 
 .PHONY: all clean fclean re
 .SECONDARY: $(OBJ)
