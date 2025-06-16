@@ -26,7 +26,7 @@ test: all
 
 .PHONY: helgrind
 helgrind: all
-	valgrind --tool=helgrind ./$(NAME) 5 500 100 100
+	valgrind --tool=helgrind ./$(NAME) 5 500 100 100 5
 
 .PHONY: all clean fclean re
 .SECONDARY: $(OBJ)

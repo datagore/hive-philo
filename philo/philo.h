@@ -6,7 +6,7 @@
 /*   By: abostrom <abostrom@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/13 23:36:06 by abostrom          #+#    #+#             */
-/*   Updated: 2025/06/15 23:01:57 by abostrom         ###   ########.fr       */
+/*   Updated: 2025/06/16 09:38:04 by abostrom         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,6 +14,7 @@
 # define PHILO_H
 
 # include <pthread.h>
+# include <stdint.h>
 
 # define MAX_EVENTS 256
 
@@ -41,7 +42,7 @@ struct s_philo
 	pthread_t		*threads;
 	pthread_mutex_t	*mutexes;
 	pthread_mutex_t	print_mutex;
-	long			start_time;
+	int64_t			start_time;
 };
 
 #endif
