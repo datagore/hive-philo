@@ -6,7 +6,7 @@
 /*   By: abostrom <abostrom@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/13 23:32:05 by abostrom          #+#    #+#             */
-/*   Updated: 2025/06/16 09:58:17 by abostrom         ###   ########.fr       */
+/*   Updated: 2025/06/16 10:15:39 by abostrom         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,7 +22,7 @@
 
 static int64_t	min(int64_t a, int64_t b)
 {
-	return a * (a < b) + b * (a >= b);
+	return (a * (a < b) + b * (a >= b));
 }
 
 static int64_t	current_time(void)
@@ -98,7 +98,7 @@ static int	write_number(char *buffer, unsigned int number)
 	return (length);
 }
 
-static void	*print_event(t_philo *philo, t_event_type event, int index)
+static void	print_event(t_philo *philo, t_event_type event, int index)
 {
 	char		buffer[50];
 	char		*end;
@@ -119,9 +119,21 @@ static void	*print_event(t_philo *philo, t_event_type event, int index)
 	if (event == EVENT_DIED)
 		end += write_string(end, "died");
 	pthread_mutex_lock(&philo->print_mutex);
-	write(STDOUT_FILENO, buffer, end - buffer);
+	if (!philo->ended)
+		write(STDOUT_FILENO, buffer, end - buffer);
+	if (event == EVENT_DIED)
+		philo->ended = true;
 	pthread_mutex_unlock(&philo->print_mutex);
-	return (NULL);
+}
+
+static bool	check_if_starved(t_philo *philo, int index, int64_t starve_time)
+{
+	if (philo->ended || current_time() >= starve_time)
+	{
+		print_event(philo, EVENT_DIED, index);
+		return (true);
+	}
+	return (false);
 }
 
 static void	*philo_thread(void *arg)
@@ -141,25 +153,39 @@ static void	*philo_thread(void *arg)
 	{
 		print_event(philo, EVENT_THINKING, index);
 		pthread_mutex_lock(&philo->mutexes[fork_number[0]]);
-		if (current_time() >= starved)
-			return print_event(philo, EVENT_DIED, index);
+		if (check_if_starved(philo, index, starved))
+		{
+			pthread_mutex_unlock(&philo->mutexes[fork_number[0]]);
+			return (NULL);
+		}
 		print_event(philo, EVENT_TOOK_FORK, index);
+		if (philo->count == 1)
+		{
+			wait_until(starved);
+			print_event(philo, EVENT_DIED, index);
+			pthread_mutex_unlock(&philo->mutexes[fork_number[0]]);
+			return (NULL);
+		}
 		pthread_mutex_lock(&philo->mutexes[fork_number[1]]);
-		if (current_time() >= starved)
-			return print_event(philo, EVENT_DIED, index);
+		if (check_if_starved(philo, index, starved))
+		{
+			pthread_mutex_unlock(&philo->mutexes[fork_number[0]]);
+			pthread_mutex_unlock(&philo->mutexes[fork_number[1]]);
+			return (NULL);
+		}
 		print_event(philo, EVENT_EATING, index);
 		done_eating = current_time() + philo->eat_time;
 		starved = current_time() + philo->starve_time;
 		wait_until(min(done_eating, starved));
-		if (current_time() >= starved)
-			return print_event(philo, EVENT_DIED, index);
-		print_event(philo, EVENT_SLEEPING, index);
 		pthread_mutex_unlock(&philo->mutexes[fork_number[0]]);
 		pthread_mutex_unlock(&philo->mutexes[fork_number[1]]);
+		if (check_if_starved(philo, index, starved))
+			return (NULL);
+		print_event(philo, EVENT_SLEEPING, index);
 		done_sleeping = done_eating + philo->sleep_time;
 		wait_until(min(done_sleeping, starved));
-		if (current_time() >= starved)
-			return print_event(philo, EVENT_DIED, index);
+		if (check_if_starved(philo, index, starved))
+			return (NULL);
 	}
 	return (NULL);
 }
@@ -198,7 +224,7 @@ int	main(int argc, char **argv)
 	if (argc != 5 && argc != 6)
 	{
 		printf("usage: %s <count> <die> <eat> <sleep> [meals]\n", argv[0]);
-		return 1;
+		return (1);
 	}
 	philo.count = read_number(argv[1]);
 	philo.starve_time = 1000 * read_number(argv[2]);
