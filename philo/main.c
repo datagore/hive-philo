@@ -6,7 +6,7 @@
 /*   By: abostrom <abostrom@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/13 23:32:05 by abostrom          #+#    #+#             */
-/*   Updated: 2025/06/16 10:15:39 by abostrom         ###   ########.fr       */
+/*   Updated: 2025/06/22 10:26:00 by abostrom         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -98,7 +98,42 @@ static int	write_number(char *buffer, unsigned int number)
 	return (length);
 }
 
-static void	print_event(t_philo *philo, t_event_type event, int index)
+static void	send_event(t_philo *philo, t_event_type type, int index)
+{
+	const size_t	write_pos = philo->write_pos++;
+	size_t			event;
+	_Atomic size_t	*target;
+
+	if (write_pos - philo->read_pos >= MAX_EVENTS)
+	{
+		printf("error: event queue is full\n");
+		exit(EXIT_FAILURE);
+	}
+	target = &philo->events[write_pos % MAX_EVENTS];
+	event = 1;
+	while (event != 0)
+		event = *target;
+	*target = (index << 8) | type;
+}
+
+static bool receive_event(t_philo *philo, t_event_type *type, int *index)
+{
+	size_t			event;
+	_Atomic size_t	*target;
+
+	if (philo->read_pos >= philo->write_pos)
+		return (false);
+	target = &philo->events[philo->read_pos++ % MAX_EVENTS];
+	event = 0;
+	while (event == 0)
+		event = *target;
+	*target = 0;
+	*type = event & 255;
+	*index = event >> 8;
+	return (true);
+}
+
+static void	print_event(t_philo *philo, t_event_type type, int index)
 {
 	char		buffer[50];
 	char		*end;
@@ -108,29 +143,27 @@ static void	print_event(t_philo *philo, t_event_type event, int index)
 	end = buffer;
 	end += write_number(end, timestamp);
 	end += write_number(end, index);
-	if (event == EVENT_TOOK_FORK)
+	if (type == EVENT_TOOK_FORK)
 		end += write_string(end, "took a fork");
-	if (event == EVENT_EATING)
+	if (type == EVENT_EATING)
 		end += write_string(end, "is eating");
-	if (event == EVENT_SLEEPING)
+	if (type == EVENT_SLEEPING)
 		end += write_string(end, "is sleeping");
-	if (event == EVENT_THINKING)
+	if (type == EVENT_THINKING)
 		end += write_string(end, "is thinking");
-	if (event == EVENT_DIED)
+	if (type == EVENT_DIED)
 		end += write_string(end, "died");
-	pthread_mutex_lock(&philo->print_mutex);
 	if (!philo->ended)
 		write(STDOUT_FILENO, buffer, end - buffer);
-	if (event == EVENT_DIED)
+	if (type == EVENT_DIED)
 		philo->ended = true;
-	pthread_mutex_unlock(&philo->print_mutex);
 }
 
 static bool	check_if_starved(t_philo *philo, int index, int64_t starve_time)
 {
 	if (philo->ended || current_time() >= starve_time)
 	{
-		print_event(philo, EVENT_DIED, index);
+		send_event(philo, EVENT_DIED, index);
 		return (true);
 	}
 	return (false);
@@ -151,18 +184,18 @@ static void	*philo_thread(void *arg)
 	starved = philo->start_time + philo->starve_time;
 	while (meals_eaten++ < philo->max_meals)
 	{
-		print_event(philo, EVENT_THINKING, index);
+		send_event(philo, EVENT_THINKING, index);
 		pthread_mutex_lock(&philo->mutexes[fork_number[0]]);
 		if (check_if_starved(philo, index, starved))
 		{
 			pthread_mutex_unlock(&philo->mutexes[fork_number[0]]);
 			return (NULL);
 		}
-		print_event(philo, EVENT_TOOK_FORK, index);
+		send_event(philo, EVENT_TOOK_FORK, index);
 		if (philo->count == 1)
 		{
 			wait_until(starved);
-			print_event(philo, EVENT_DIED, index);
+			send_event(philo, EVENT_DIED, index);
 			pthread_mutex_unlock(&philo->mutexes[fork_number[0]]);
 			return (NULL);
 		}
@@ -173,7 +206,8 @@ static void	*philo_thread(void *arg)
 			pthread_mutex_unlock(&philo->mutexes[fork_number[1]]);
 			return (NULL);
 		}
-		print_event(philo, EVENT_EATING, index);
+		send_event(philo, EVENT_TOOK_FORK, index);
+		send_event(philo, EVENT_EATING, index);
 		done_eating = current_time() + philo->eat_time;
 		starved = current_time() + philo->starve_time;
 		wait_until(min(done_eating, starved));
@@ -181,12 +215,14 @@ static void	*philo_thread(void *arg)
 		pthread_mutex_unlock(&philo->mutexes[fork_number[1]]);
 		if (check_if_starved(philo, index, starved))
 			return (NULL);
-		print_event(philo, EVENT_SLEEPING, index);
+		send_event(philo, EVENT_SLEEPING, index);
 		done_sleeping = done_eating + philo->sleep_time;
 		wait_until(min(done_sleeping, starved));
 		if (check_if_starved(philo, index, starved))
 			return (NULL);
+		usleep(500);
 	}
+	philo->finished++;
 	return (NULL);
 }
 
@@ -207,6 +243,14 @@ static void	philo_main(t_philo *philo)
 			printf("error: pthread_create failed\n");
 			return ;
 		}
+	}
+	while (!philo->ended && philo->finished < philo->count)
+	{
+		t_event_type	type;
+		int				index;
+		while (receive_event(philo, &type, &index))
+			print_event(philo, type, index);
+		usleep(100);
 	}
 	i = 0;
 	while (i < philo->count)
