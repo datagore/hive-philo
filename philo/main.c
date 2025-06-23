@@ -6,7 +6,7 @@
 /*   By: abostrom <abostrom@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/13 23:32:05 by abostrom          #+#    #+#             */
-/*   Updated: 2025/06/23 16:14:37 by abostrom         ###   ########.fr       */
+/*   Updated: 2025/06/24 00:38:53 by abostrom         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,18 +28,6 @@ static int64_t	current_time(void)
 	return (timeval.tv_sec * 1000000 + timeval.tv_usec);
 }
 
-static void	wait_until(int64_t target_time)
-{
-	int64_t	difference;
-
-	difference = target_time - current_time();
-	while (difference > 0)
-	{
-		usleep(difference);
-		difference = target_time - current_time();
-	}
-}
-
 static int	read_number(const char *str)
 {
 	int64_t	value;
@@ -48,186 +36,192 @@ static int	read_number(const char *str)
 	while (*str == ' ' || ('\t' <= *str && *str <= '\r'))
 		str++;
 	while ('0' <= *str && *str <= '9')
+	{
 		value = value * 10 + *str++ - '0';
+		if (value > INT_MAX)
+			return (-1);
+	}
 	while (*str == ' ' || ('\t' <= *str && *str <= '\r'))
 		str++;
-	if (*str != '\0' || value <= 0)
-	{
-		printf("error: invalid argument '%s'\n", str);
-		exit(EXIT_FAILURE);
-	}
+	if (*str != '\0' || value == 0)
+		return (-1);
 	return (value);
-}
-
-static int	write_string(char *buffer, char *string)
-{
-	int	length;
-
-	length = 0;
-	while (*string != '\0')
-		buffer[length++] = *string++;
-	buffer[length++] = '\n';
-	return (length);
-}
-
-static int	write_number(char *buffer, unsigned int number)
-{
-	unsigned int	length;
-	unsigned int	digits;
-	unsigned int	temp;
-
-	temp = number;
-	digits = number == 0;
-	while (temp > 0)
-	{
-		temp /= 10;
-		digits++;
-	}
-	length = digits;
-	while (digits-- > 0)
-	{
-		buffer[digits] = '0' + number % 10;
-		number /= 10;
-	}
-	buffer[length++] = ' ';
-	return (length);
 }
 
 static void	print_state(t_philo *philo, t_state state, int index)
 {
-	char		buffer[50];
-	char		*end;
-	uint64_t	timestamp;
+	int					timestamp;
+	static char *const	state_names[] = {
+		"is sleeping",
+		"is thinking",
+		"took a fork",
+		"took a fork",
+		"is eating",
+		"died",
+	};
 
-	timestamp = (current_time() - philo->start_time + 500) / 1000;
-	end = buffer;
-	end += write_number(end, timestamp);
-	end += write_number(end, index);
-	if (state == STATE_THINKING)
-		end += write_string(end, "is thinking");
-	if (state == STATE_TOOK_FORK1 || state == STATE_TOOK_FORK2)
-		end += write_string(end, "took a fork");
-	if (state == STATE_EATING)
-		end += write_string(end, "is eating");
-	if (state == STATE_SLEEPING)
-		end += write_string(end, "is sleeping");
+	timestamp = (current_time() - philo->start_time) / 1000;
+	if (!philo->ended)
+		printf("%d %d %s\n", timestamp, index + 1, state_names[state]);
 	if (state == STATE_DIED)
-		end += write_string(end, "died");
-	if (philo->died == 0)
-		write(STDOUT_FILENO, buffer, end - buffer);
-	if (state == STATE_DIED)
-		philo->died++;
+		philo->ended = true;
 }
 
-static void	*philo_thread(void *arg)
+static void	*diner_main(void *arg)
 {
-	t_philo *const	philo = (t_philo*) arg;
-	const int		index = philo->created++;
-	const bool		last = index == philo->count - 1;
-	const int		fork_number[2] = {!last * index, !last + index};
-	int				meals_eaten;
+	t_diner *const	d = (t_diner*) arg;
 
-	meals_eaten = 0;
-	while (philo->died == 0 && meals_eaten++ < philo->max_meals)
+	while (!d->ended && d->meal_count < d->meal_limit)
 	{
-		philo->states[index]++;
-		pthread_mutex_lock(&philo->mutexes[fork_number[0]]);
-		philo->states[index]++;
-		if (philo->count == 1)
+		d->state++;
+		pthread_mutex_lock(d->fork1);
+		d->state++;
+		if (d->fork1 == d->fork2)
 		{
-			wait_until(current_time() + philo->starve_time);
-			pthread_mutex_unlock(&philo->mutexes[fork_number[0]]);
+			usleep(d->time_to_die);
+			pthread_mutex_unlock(d->fork1);
 			break ;
 		}
-		pthread_mutex_lock(&philo->mutexes[fork_number[1]]);
-		philo->states[index] += 2;
-		wait_until(current_time() + philo->eat_time);
-		philo->meal_times[index] = current_time();
-		pthread_mutex_unlock(&philo->mutexes[fork_number[0]]);
-		pthread_mutex_unlock(&philo->mutexes[fork_number[1]]);
-		philo->states[index]++;
-		wait_until(current_time() + philo->sleep_time);
+		pthread_mutex_lock(d->fork2);
+		d->state += 2;
+		usleep(d->time_to_eat);
+		d->meal_time = current_time();
+		d->meal_count++;
+		pthread_mutex_unlock(d->fork1);
+		pthread_mutex_unlock(d->fork2);
+		d->state++;
+		usleep(d->time_to_sleep);
 		usleep(500);
 	}
-	philo->finished++;
 	return (NULL);
 }
 
-static void	philo_main(t_philo *philo)
+static void	philo_begin(t_philo *p, int arguments[5])
 {
-	int			i;
-	uint64_t	state;
-	int64_t	now;
+	int	i;
 
-	philo->start_time = current_time();
 	i = 0;
-	while (i < philo->count)
-		pthread_mutex_init(&philo->mutexes[i++], NULL);
+	p->count = arguments[0];
+	while (i < p->count)
+		pthread_mutex_init(&p->mutexes[i++], NULL);
+	p->start_time = current_time();
 	i = 0;
-	while (i < philo->count)
+	while (i < p->count)
 	{
-		philo->states[i] = STATE_SLEEPING;
-		philo->states[philo->count + i] = STATE_SLEEPING;
-		philo->meal_times[i] = philo->start_time;
-		if (pthread_create(&philo->threads[i++], NULL, philo_thread, philo))
+		p->diners[i].time_to_die = 1000LL * arguments[1];
+		p->diners[i].time_to_eat = 1000LL * arguments[2];
+		p->diners[i].time_to_sleep = 1000LL * arguments[3];
+		p->diners[i].meal_limit = arguments[4];
+		p->diners[i].fork1 = &p->mutexes[i * (i != p->count - 1)];
+		p->diners[i].fork2 = &p->mutexes[i + (i != p->count - 1)];
+		p->diners[i].meal_time = p->start_time;
+		if (pthread_create(&p->threads[i], NULL, diner_main, &p->diners[i]))
 		{
 			printf("error: pthread_create failed\n");
-			return ;
+			break ;
 		}
+		p->started++;
+		i++;
 	}
-	while (philo->died == 0 && philo->finished < philo->count)
+}
+
+static void	philo_loop(t_philo *p)
+{
+	int		i;
+	int		finished;
+	int64_t	now;
+	int64_t	state;
+
+	finished = 0;
+	while (p->started == p->count && !p->ended && finished < p->count)
 	{
 		i = 0;
+		finished = 0;
 		now = current_time();
-		while (i < philo->count)
+		while (i < p->count)
 		{
-			state = philo->states[i];
-			if (now - philo->meal_times[i] >= philo->starve_time)
-			{
-				print_state(philo, STATE_DIED, i);
-				break;
-			}
-			while (philo->states[philo->count + i] < state)
-				print_state(philo, ++philo->states[philo->count + i] % 5, i);
+			state = p->diners[i].state;
+			if (p->diners[i].meal_count == p->diners[i].meal_limit)
+				finished++;
+			else if (p->diners[i].meal_time + p->diners[i].time_to_die < now)
+				print_state(p, STATE_DIED, i);
+			while (p->states[i] < state)
+				print_state(p, ++p->states[i] % STATE_MAX, i);
 			i++;
 		}
 		usleep(100);
 	}
+}
+
+static void	philo_end(t_philo *p)
+{
+	int	i;
+
 	i = 0;
-	while (i < philo->count)
-		pthread_join(philo->threads[i++], NULL);
+	while (i < p->started)
+	{
+		p->diners[i].ended = true;
+		pthread_join(p->threads[i++], NULL);
+	}
 	i = 0;
-	while (i < philo->count)
-		pthread_mutex_destroy(&philo->mutexes[i++]);
+	while (i < p->count)
+		pthread_mutex_destroy(&p->mutexes[i++]);
+}
+
+static void	parse_arguments(int argc, char **argv, int arguments[5])
+{
+	int	i;
+
+	if (argc < 5 || argc > 6)
+	{
+		printf("usage: ./philo <count> <die> <eat> <sleep> [meals]\n");
+		exit(EXIT_FAILURE);
+	}
+	i = 0;
+	arguments[4] = INT_MAX;
+	while (i < argc - 1)
+	{
+		arguments[i] = read_number(argv[i + 1]);
+		if (arguments[i] <= 0)
+		{
+			printf("error: invalid argument '%s'\n", argv[i + 1]);
+			exit(EXIT_FAILURE);
+		}
+		i++;
+	}
+}
+
+static void	*malloc_zeroed(size_t size)
+{
+	void *const	data = malloc(size);
+
+	if (data != NULL)
+		memset(data, 0, size);
+	return (data);
 }
 
 int	main(int argc, char **argv)
 {
 	t_philo	philo;
+	int		arguments[5];
 
-	memset(&philo, 0, sizeof(t_philo));
-	if (argc != 5 && argc != 6)
-	{
-		printf("usage: %s <count> <die> <eat> <sleep> [meals]\n", argv[0]);
-		return (1);
-	}
-	philo.count = read_number(argv[1]);
-	philo.starve_time = 1000 * read_number(argv[2]);
-	philo.eat_time = 1000 * read_number(argv[3]);
-	philo.sleep_time = 1000 * read_number(argv[4]);
-	philo.max_meals = INT_MAX;
-	if (argc == 6)
-		philo.max_meals = read_number(argv[5]);
-	philo.threads = malloc(philo.count * sizeof(*philo.threads));
-	philo.mutexes = malloc(philo.count * sizeof(*philo.mutexes));
-	philo.states = malloc(2 * philo.count * sizeof(*philo.states));
-	philo.meal_times = malloc(philo.count * sizeof(*philo.meal_times));
-	if (philo.threads != NULL && philo.mutexes != NULL && philo.states != NULL && philo.meal_times != NULL)
-		philo_main(&philo);
-	else
+	parse_arguments(argc, argv, arguments);
+	memset(&philo, 0, sizeof(philo));
+	philo.count = arguments[0];
+	philo.mutexes = malloc_zeroed(philo.count * sizeof(pthread_mutex_t));
+	philo.threads = malloc_zeroed(philo.count * sizeof(pthread_t));
+	philo.diners = malloc_zeroed(philo.count * sizeof(t_diner));
+	philo.states = malloc_zeroed(philo.count * sizeof(int64_t));
+	if (!philo.mutexes || !philo.threads || !philo.diners || !philo.states)
 		printf("error: can't allocate memory\n");
-	free(philo.threads);
+	else
+	{
+		philo_begin(&philo, arguments);
+		philo_loop(&philo);
+		philo_end(&philo);
+	}
 	free(philo.mutexes);
+	free(philo.threads);
+	free(philo.diners);
 	free(philo.states);
-	free(philo.meal_times);
 }

@@ -6,45 +6,55 @@
 /*   By: abostrom <abostrom@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/13 23:36:06 by abostrom          #+#    #+#             */
-/*   Updated: 2025/06/23 12:36:46 by abostrom         ###   ########.fr       */
+/*   Updated: 2025/06/24 00:37:01 by abostrom         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef PHILO_H
 # define PHILO_H
 
-# include <limits.h>
 # include <pthread.h>
 # include <stdint.h>
 
-typedef enum e_state	t_state;
-typedef struct s_philo	t_philo;
-
-enum e_state
-{
-	STATE_SLEEPING,
-	STATE_THINKING,
-	STATE_TOOK_FORK1,
-	STATE_TOOK_FORK2,
-	STATE_EATING,
-	STATE_DIED = UINT64_MAX
-};
+typedef struct s_philo	t_philo;	// State for the whole simulation
+typedef struct s_diner	t_diner;	// State for one diner
+typedef enum e_state	t_state;	// Enumeration type for diner states
 
 struct s_philo
 {
-	int					count;		// The total number of philosophers.
-	int					starve_time;// Starvation time in microseconds.
-	int					eat_time;	// Eating time in microseconds.
-	int					sleep_time;	// Sleeping time in microseconds.
-	int					max_meals;	// Maximum number of meals to eat.
-	_Atomic int			created;	// How many threads have been created.
-	_Atomic int			finished;	// How many have finished all meals.
-	_Atomic int			died;		// How many have died.
-	pthread_t			*threads;	// Array of threads per philosopher.
-	pthread_mutex_t		*mutexes;	// Array of mutexes per fork.
-	int64_t				start_time;	// Timestamp of the start of the simulation.
-	_Atomic uint64_t	*states;	// Array of philosopher states.
-	_Atomic int64_t		*meal_times;// Array of last meal times.
+	bool			ended;		// Set to true when simulation ends
+	int				count;		// Total number of diners
+	int				started;	// Numober of threads that were started
+	pthread_mutex_t	*mutexes;	// Array of fork mutexes
+	pthread_t		*threads;	// Array of diner threads
+	t_diner			*diners;	// Array of diners
+	int64_t			*states;	// Array of observed diner states
+	int64_t			start_time;	// Timestamp of start of simulation
+};
+
+struct s_diner
+{
+	int64_t			time_to_die;	// Time it takes to starve (in µs)
+	int64_t			time_to_eat;	// Time it takes to eat (in µs)
+	int64_t			time_to_sleep;	// Time it takes to sleep (in µs)
+	pthread_mutex_t	*fork1;			// First fork to take
+	pthread_mutex_t	*fork2;			// Second fork to take
+	_Atomic bool	ended;			// Set to true when simulation ends
+	_Atomic int64_t	state;			// Number of state transitions
+	_Atomic int64_t	meal_time;		// Timestamp of last meal (in µs)
+	_Atomic int		meal_count;		// Number of meals the diner has had
+	int				meal_limit;		// The maximum number of meals to eat
+};
+
+enum e_state
+{
+	STATE_SLEEPING,			// The diner is sleeping (or just started)
+	STATE_THINKING,			// The diner is thinking
+	STATE_TAKEN_FORK1,		// The diner has taken its first fork
+	STATE_TAKEN_FORK2,		// The diner has taken its second fork
+	STATE_EATING,			// The diner is eating
+	STATE_MAX,				// Not a real state, just used for cycling states
+	STATE_DIED = STATE_MAX,	// The diner has died of starvation
 };
 
 #endif
