@@ -6,7 +6,7 @@
 /*   By: abostrom <abostrom@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/13 23:32:05 by abostrom          #+#    #+#             */
-/*   Updated: 2025/06/23 10:48:41 by abostrom         ###   ########.fr       */
+/*   Updated: 2025/06/23 10:57:37 by abostrom         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -210,7 +210,7 @@ static void	philo_main(t_philo *philo)
 			return ;
 		}
 	}
-	while (philo->died == 0 && philo->finished < philo->max_meals)
+	while (philo->died == 0 && philo->finished < philo->count)
 	{
 		i = 0;
 		while (i < philo->count)
