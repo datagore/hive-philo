@@ -6,7 +6,7 @@
 /*   By: abostrom <abostrom@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/13 23:32:05 by abostrom          #+#    #+#             */
-/*   Updated: 2025/06/22 10:26:00 by abostrom         ###   ########.fr       */
+/*   Updated: 2025/06/23 10:48:41 by abostrom         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -98,42 +98,7 @@ static int	write_number(char *buffer, unsigned int number)
 	return (length);
 }
 
-static void	send_event(t_philo *philo, t_event_type type, int index)
-{
-	const size_t	write_pos = philo->write_pos++;
-	size_t			event;
-	_Atomic size_t	*target;
-
-	if (write_pos - philo->read_pos >= MAX_EVENTS)
-	{
-		printf("error: event queue is full\n");
-		exit(EXIT_FAILURE);
-	}
-	target = &philo->events[write_pos % MAX_EVENTS];
-	event = 1;
-	while (event != 0)
-		event = *target;
-	*target = (index << 8) | type;
-}
-
-static bool receive_event(t_philo *philo, t_event_type *type, int *index)
-{
-	size_t			event;
-	_Atomic size_t	*target;
-
-	if (philo->read_pos >= philo->write_pos)
-		return (false);
-	target = &philo->events[philo->read_pos++ % MAX_EVENTS];
-	event = 0;
-	while (event == 0)
-		event = *target;
-	*target = 0;
-	*type = event & 255;
-	*index = event >> 8;
-	return (true);
-}
-
-static void	print_event(t_philo *philo, t_event_type type, int index)
+static void	print_state(t_philo *philo, t_state state, int index)
 {
 	char		buffer[50];
 	char		*end;
@@ -143,27 +108,27 @@ static void	print_event(t_philo *philo, t_event_type type, int index)
 	end = buffer;
 	end += write_number(end, timestamp);
 	end += write_number(end, index);
-	if (type == EVENT_TOOK_FORK)
-		end += write_string(end, "took a fork");
-	if (type == EVENT_EATING)
-		end += write_string(end, "is eating");
-	if (type == EVENT_SLEEPING)
-		end += write_string(end, "is sleeping");
-	if (type == EVENT_THINKING)
+	if (state == STATE_THINKING)
 		end += write_string(end, "is thinking");
-	if (type == EVENT_DIED)
+	if (state == STATE_TOOK_FORK1 || state == STATE_TOOK_FORK2)
+		end += write_string(end, "took a fork");
+	if (state == STATE_EATING)
+		end += write_string(end, "is eating");
+	if (state == STATE_SLEEPING)
+		end += write_string(end, "is sleeping");
+	if (state == STATE_DIED)
 		end += write_string(end, "died");
-	if (!philo->ended)
+	if (philo->died == 0)
 		write(STDOUT_FILENO, buffer, end - buffer);
-	if (type == EVENT_DIED)
-		philo->ended = true;
+	if (state == STATE_DIED)
+		philo->died++;
 }
 
 static bool	check_if_starved(t_philo *philo, int index, int64_t starve_time)
 {
-	if (philo->ended || current_time() >= starve_time)
+	if (philo->died || current_time() >= starve_time)
 	{
-		send_event(philo, EVENT_DIED, index);
+		philo->states[index] = STATE_DIED;
 		return (true);
 	}
 	return (false);
@@ -184,18 +149,18 @@ static void	*philo_thread(void *arg)
 	starved = philo->start_time + philo->starve_time;
 	while (meals_eaten++ < philo->max_meals)
 	{
-		send_event(philo, EVENT_THINKING, index);
+		philo->states[index]++;
 		pthread_mutex_lock(&philo->mutexes[fork_number[0]]);
 		if (check_if_starved(philo, index, starved))
 		{
 			pthread_mutex_unlock(&philo->mutexes[fork_number[0]]);
 			return (NULL);
 		}
-		send_event(philo, EVENT_TOOK_FORK, index);
+		philo->states[index]++;
 		if (philo->count == 1)
 		{
 			wait_until(starved);
-			send_event(philo, EVENT_DIED, index);
+			philo->states[index] = STATE_DIED;
 			pthread_mutex_unlock(&philo->mutexes[fork_number[0]]);
 			return (NULL);
 		}
@@ -206,8 +171,8 @@ static void	*philo_thread(void *arg)
 			pthread_mutex_unlock(&philo->mutexes[fork_number[1]]);
 			return (NULL);
 		}
-		send_event(philo, EVENT_TOOK_FORK, index);
-		send_event(philo, EVENT_EATING, index);
+		philo->states[index]++;
+		philo->states[index]++;
 		done_eating = current_time() + philo->eat_time;
 		starved = current_time() + philo->starve_time;
 		wait_until(min(done_eating, starved));
@@ -215,7 +180,7 @@ static void	*philo_thread(void *arg)
 		pthread_mutex_unlock(&philo->mutexes[fork_number[1]]);
 		if (check_if_starved(philo, index, starved))
 			return (NULL);
-		send_event(philo, EVENT_SLEEPING, index);
+		philo->states[index]++;
 		done_sleeping = done_eating + philo->sleep_time;
 		wait_until(min(done_sleeping, starved));
 		if (check_if_starved(philo, index, starved))
@@ -228,10 +193,11 @@ static void	*philo_thread(void *arg)
 
 static void	philo_main(t_philo *philo)
 {
-	int		i;
+	int			i;
+	uint64_t	state;
 
+	memset(philo->states, 0, 2 * philo->count * sizeof(*philo->states));
 	philo->start_time = current_time();
-	pthread_mutex_init(&philo->print_mutex, NULL);
 	i = 0;
 	while (i < philo->count)
 		pthread_mutex_init(&philo->mutexes[i++], NULL);
@@ -244,12 +210,21 @@ static void	philo_main(t_philo *philo)
 			return ;
 		}
 	}
-	while (!philo->ended && philo->finished < philo->count)
+	while (philo->died == 0 && philo->finished < philo->max_meals)
 	{
-		t_event_type	type;
-		int				index;
-		while (receive_event(philo, &type, &index))
-			print_event(philo, type, index);
+		i = 0;
+		while (i < philo->count)
+		{
+			state = philo->states[i];
+			if (state == STATE_DIED)
+			{
+				print_state(philo, state, i);
+				break;
+			}
+			while (philo->states[philo->count + i] < state)
+				print_state(philo, ++philo->states[philo->count + i] % 5, i);
+			i++;
+		}
 		usleep(100);
 	}
 	i = 0;
@@ -277,12 +252,14 @@ int	main(int argc, char **argv)
 	philo.max_meals = INT_MAX;
 	if (argc == 6)
 		philo.max_meals = read_number(argv[5]);
-	philo.threads = malloc(philo.count * sizeof(pthread_t *));
-	philo.mutexes = malloc(philo.count * sizeof(pthread_mutex_t));
-	if (philo.threads != NULL && philo.mutexes != NULL)
+	philo.threads = malloc(philo.count * sizeof(*philo.threads));
+	philo.mutexes = malloc(philo.count * sizeof(*philo.mutexes));
+	philo.states = malloc(2 * philo.count * sizeof(*philo.states));
+	if (philo.threads != NULL && philo.mutexes != NULL && philo.states != NULL)
 		philo_main(&philo);
 	else
 		printf("error: can't allocate memory\n");
 	free(philo.threads);
 	free(philo.mutexes);
+	free(philo.states);
 }
