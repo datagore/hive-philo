@@ -6,7 +6,7 @@
 /*   By: abostrom <abostrom@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/13 23:36:06 by abostrom          #+#    #+#             */
-/*   Updated: 2025/06/23 10:49:16 by abostrom         ###   ########.fr       */
+/*   Updated: 2025/06/23 12:36:46 by abostrom         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,6 +44,7 @@ struct s_philo
 	pthread_mutex_t		*mutexes;	// Array of mutexes per fork.
 	int64_t				start_time;	// Timestamp of the start of the simulation.
 	_Atomic uint64_t	*states;	// Array of philosopher states.
+	_Atomic int64_t		*meal_times;// Array of last meal times.
 };
 
 #endif

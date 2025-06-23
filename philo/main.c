@@ -6,7 +6,7 @@
 /*   By: abostrom <abostrom@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/13 23:32:05 by abostrom          #+#    #+#             */
-/*   Updated: 2025/06/23 10:57:37 by abostrom         ###   ########.fr       */
+/*   Updated: 2025/06/23 16:14:37 by abostrom         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,11 +19,6 @@
 #include <unistd.h>
 
 #include "philo.h"
-
-static int64_t	min(int64_t a, int64_t b)
-{
-	return (a * (a < b) + b * (a >= b));
-}
 
 static int64_t	current_time(void)
 {
@@ -124,16 +119,6 @@ static void	print_state(t_philo *philo, t_state state, int index)
 		philo->died++;
 }
 
-static bool	check_if_starved(t_philo *philo, int index, int64_t starve_time)
-{
-	if (philo->died || current_time() >= starve_time)
-	{
-		philo->states[index] = STATE_DIED;
-		return (true);
-	}
-	return (false);
-}
-
 static void	*philo_thread(void *arg)
 {
 	t_philo *const	philo = (t_philo*) arg;
@@ -141,50 +126,27 @@ static void	*philo_thread(void *arg)
 	const bool		last = index == philo->count - 1;
 	const int		fork_number[2] = {!last * index, !last + index};
 	int				meals_eaten;
-	int64_t			done_eating;
-	int64_t			done_sleeping;
-	int64_t			starved;
 
 	meals_eaten = 0;
-	starved = philo->start_time + philo->starve_time;
-	while (meals_eaten++ < philo->max_meals)
+	while (philo->died == 0 && meals_eaten++ < philo->max_meals)
 	{
 		philo->states[index]++;
 		pthread_mutex_lock(&philo->mutexes[fork_number[0]]);
-		if (check_if_starved(philo, index, starved))
-		{
-			pthread_mutex_unlock(&philo->mutexes[fork_number[0]]);
-			return (NULL);
-		}
 		philo->states[index]++;
 		if (philo->count == 1)
 		{
-			wait_until(starved);
-			philo->states[index] = STATE_DIED;
+			wait_until(current_time() + philo->starve_time);
 			pthread_mutex_unlock(&philo->mutexes[fork_number[0]]);
-			return (NULL);
+			break ;
 		}
 		pthread_mutex_lock(&philo->mutexes[fork_number[1]]);
-		if (check_if_starved(philo, index, starved))
-		{
-			pthread_mutex_unlock(&philo->mutexes[fork_number[0]]);
-			pthread_mutex_unlock(&philo->mutexes[fork_number[1]]);
-			return (NULL);
-		}
-		philo->states[index]++;
-		philo->states[index]++;
-		done_eating = current_time() + philo->eat_time;
-		starved = current_time() + philo->starve_time;
-		wait_until(min(done_eating, starved));
+		philo->states[index] += 2;
+		wait_until(current_time() + philo->eat_time);
+		philo->meal_times[index] = current_time();
 		pthread_mutex_unlock(&philo->mutexes[fork_number[0]]);
 		pthread_mutex_unlock(&philo->mutexes[fork_number[1]]);
-		if (check_if_starved(philo, index, starved))
-			return (NULL);
 		philo->states[index]++;
-		done_sleeping = done_eating + philo->sleep_time;
-		wait_until(min(done_sleeping, starved));
-		if (check_if_starved(philo, index, starved))
-			return (NULL);
+		wait_until(current_time() + philo->sleep_time);
 		usleep(500);
 	}
 	philo->finished++;
@@ -195,8 +157,8 @@ static void	philo_main(t_philo *philo)
 {
 	int			i;
 	uint64_t	state;
+	int64_t	now;
 
-	memset(philo->states, 0, 2 * philo->count * sizeof(*philo->states));
 	philo->start_time = current_time();
 	i = 0;
 	while (i < philo->count)
@@ -204,6 +166,9 @@ static void	philo_main(t_philo *philo)
 	i = 0;
 	while (i < philo->count)
 	{
+		philo->states[i] = STATE_SLEEPING;
+		philo->states[philo->count + i] = STATE_SLEEPING;
+		philo->meal_times[i] = philo->start_time;
 		if (pthread_create(&philo->threads[i++], NULL, philo_thread, philo))
 		{
 			printf("error: pthread_create failed\n");
@@ -213,12 +178,13 @@ static void	philo_main(t_philo *philo)
 	while (philo->died == 0 && philo->finished < philo->count)
 	{
 		i = 0;
+		now = current_time();
 		while (i < philo->count)
 		{
 			state = philo->states[i];
-			if (state == STATE_DIED)
+			if (now - philo->meal_times[i] >= philo->starve_time)
 			{
-				print_state(philo, state, i);
+				print_state(philo, STATE_DIED, i);
 				break;
 			}
 			while (philo->states[philo->count + i] < state)
@@ -255,11 +221,13 @@ int	main(int argc, char **argv)
 	philo.threads = malloc(philo.count * sizeof(*philo.threads));
 	philo.mutexes = malloc(philo.count * sizeof(*philo.mutexes));
 	philo.states = malloc(2 * philo.count * sizeof(*philo.states));
-	if (philo.threads != NULL && philo.mutexes != NULL && philo.states != NULL)
+	philo.meal_times = malloc(philo.count * sizeof(*philo.meal_times));
+	if (philo.threads != NULL && philo.mutexes != NULL && philo.states != NULL && philo.meal_times != NULL)
 		philo_main(&philo);
 	else
 		printf("error: can't allocate memory\n");
 	free(philo.threads);
 	free(philo.mutexes);
 	free(philo.states);
+	free(philo.meal_times);
 }
