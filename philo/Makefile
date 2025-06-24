@@ -1,8 +1,9 @@
-SRC := main.c
-OBJ := $(SRC:%.c=%.o)
 NAME := philo
+SRC := main.c util.c
+HEADERS := philo.h
 CFLAGS := -Wall -Wextra -Werror
 LDFLAGS := -pthread
+OBJ := $(SRC:%.c=%.o)
 
 all: $(NAME)
 
@@ -17,16 +18,8 @@ re: fclean all
 $(NAME): $(OBJ)
 	$(CC) $^ -o $@ $(LDFLAGS)
 
-%.o: %.c philo.h
+%.o: %.c $(HEADERS)
 	$(CC) -c $< -o $@ $(CFLAGS)
-
-.PHONY: test
-test: all
-	./$(NAME) 5 500 100 100 5
-
-.PHONY: helgrind
-helgrind: all
-	valgrind --tool=helgrind ./$(NAME) 5 500 100 100 5
 
 .PHONY: all clean fclean re
 .SECONDARY: $(OBJ)
