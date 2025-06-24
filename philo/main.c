@@ -6,7 +6,7 @@
 /*   By: abostrom <abostrom@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/13 23:32:05 by abostrom          #+#    #+#             */
-/*   Updated: 2025/06/24 09:09:27 by abostrom         ###   ########.fr       */
+/*   Updated: 2025/06/24 21:17:47 by abostrom         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -109,10 +109,10 @@ static void	philo_end(t_philo *p)
 
 	i = 0;
 	while (i < p->started)
-	{
-		p->diners[i].ended = true;
+		p->diners[i++].ended = true;
+	i = 0;
+	while (i < p->started)
 		pthread_join(p->threads[i++], NULL);
-	}
 	i = 0;
 	while (i < p->count)
 		pthread_mutex_destroy(&p->mutexes[i++]);
