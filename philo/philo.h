@@ -6,7 +6,7 @@
 /*   By: abostrom <abostrom@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/13 23:36:06 by abostrom          #+#    #+#             */
-/*   Updated: 2025/06/24 08:34:20 by abostrom         ###   ########.fr       */
+/*   Updated: 2025/06/24 21:23:53 by abostrom         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,12 +36,13 @@ struct s_diner
 {
 	_Atomic bool	ended;			// Set to true when simulation ends
 	_Atomic int64_t	state;			// Number of state transitions
-	_Atomic int64_t	meal_time;		// Timestamp of last meal (in µs)
+	_Atomic int64_t	meal_time;		// Timestamp of last meal (µs)
 	_Atomic int		meal_count;		// Number of meals the diner has had
 	int				meal_limit;		// The maximum number of meals to eat
-	int64_t			time_to_die;	// Time it takes to starve (in µs)
-	int64_t			time_to_eat;	// Time it takes to eat (in µs)
-	int64_t			time_to_sleep;	// Time it takes to sleep (in µs)
+	int64_t			predelay;		// Delay before grabbing the first fork (µs)
+	int64_t			time_to_die;	// Time it takes to starve (µs)
+	int64_t			time_to_eat;	// Time it takes to eat (µs)
+	int64_t			time_to_sleep;	// Time it takes to sleep (µs)
 	pthread_mutex_t	*fork1;			// First fork to take
 	pthread_mutex_t	*fork2;			// Second fork to take
 };

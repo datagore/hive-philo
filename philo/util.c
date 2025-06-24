@@ -6,7 +6,7 @@
 /*   By: abostrom <abostrom@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/24 08:18:21 by abostrom          #+#    #+#             */
-/*   Updated: 2025/06/24 09:04:56 by abostrom         ###   ########.fr       */
+/*   Updated: 2025/06/24 22:27:00 by abostrom         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,8 +41,8 @@ void	print_state(t_philo *philo, t_state state, int index)
 	static char *const	state_names[] = {
 		"is sleeping",
 		"is thinking",
-		"took a fork",
-		"took a fork",
+		"has taken a fork",
+		"has taken a fork",
 		"is eating",
 		"died",
 	};

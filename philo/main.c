@@ -6,7 +6,7 @@
 /*   By: abostrom <abostrom@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/13 23:32:05 by abostrom          #+#    #+#             */
-/*   Updated: 2025/06/24 21:17:47 by abostrom         ###   ########.fr       */
+/*   Updated: 2025/06/24 23:13:47 by abostrom         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,6 +24,7 @@ static void	*diner_thread(void *arg)
 	while (!diner->ended && diner->meal_count < diner->meal_limit)
 	{
 		diner->state++;
+		usleep(diner->predelay * (diner->meal_count == 0) + 500);
 		pthread_mutex_lock(diner->fork1);
 		diner->state++;
 		if (diner->fork1 == diner->fork2)
@@ -41,12 +42,11 @@ static void	*diner_thread(void *arg)
 		pthread_mutex_unlock(diner->fork2);
 		diner->state++;
 		usleep(diner->time_to_sleep);
-		usleep(750);
 	}
 	return (NULL);
 }
 
-static void	philo_begin(t_philo *p, int arguments[5])
+static int	philo_begin(t_philo *p, int arguments[5])
 {
 	int	i;
 
@@ -65,14 +65,13 @@ static void	philo_begin(t_philo *p, int arguments[5])
 		p->diners[i].meal_time = p->start_time;
 		p->diners[i].fork1 = &p->mutexes[i * (i != p->count - 1)];
 		p->diners[i].fork2 = &p->mutexes[i + (i != p->count - 1)];
+		p->diners[i].predelay = (i % 2 == 0) * p->diners[i].time_to_eat;
 		if (pthread_create(&p->threads[i], NULL, diner_thread, &p->diners[i]))
-		{
-			printf("error: pthread_create failed\n");
-			break ;
-		}
+			return (printf("error: pthread_create failed\n"));
 		p->started++;
 		i++;
 	}
+	return (0);
 }
 
 static void	philo_loop(t_philo *p)
@@ -99,7 +98,7 @@ static void	philo_loop(t_philo *p)
 				print_state(p, ++p->states[i] % STATE_MAX, i);
 			i++;
 		}
-		usleep(500);
+		usleep(1000);
 	}
 }
 
