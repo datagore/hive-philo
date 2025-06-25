@@ -6,7 +6,7 @@
 /*   By: abostrom <abostrom@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/13 23:36:06 by abostrom          #+#    #+#             */
-/*   Updated: 2025/06/24 21:23:53 by abostrom         ###   ########.fr       */
+/*   Updated: 2025/06/25 11:49:34 by abostrom         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,19 +22,18 @@ typedef enum e_state	t_state;	// Enumeration type for diner states
 
 struct s_philo
 {
-	bool			ended;		// Set to true when simulation ends
+	bool			stop;		// Set to true when simulation ends
 	int				count;		// Total number of diners
-	int				started;	// Numober of threads that were started
+	int				started;	// Number of threads that were started
 	pthread_mutex_t	*mutexes;	// Array of fork mutexes
 	pthread_t		*threads;	// Array of diner threads
 	t_diner			*diners;	// Array of per-diner data
 	int64_t			*states;	// Array of observed diner states
-	int64_t			start_time;	// Timestamp of start of simulation
 };
 
 struct s_diner
 {
-	_Atomic bool	ended;			// Set to true when simulation ends
+	_Atomic bool	stop;			// Set to true when simulation ends
 	_Atomic int64_t	state;			// Number of state transitions
 	_Atomic int64_t	meal_time;		// Timestamp of last meal (µs)
 	_Atomic int		meal_count;		// Number of meals the diner has had
@@ -55,7 +54,7 @@ enum e_state
 	STATE_TAKEN_FORK2,		// The diner has taken its second fork
 	STATE_EATING,			// The diner is eating
 	STATE_MAX,				// Not a real state, just used for cycling states
-	STATE_DIED = STATE_MAX,	// The diner has died of starvation
+	STATE_DIED = STATE_MAX,	// Only used for printing death messages
 };
 
 int64_t	current_time(void);

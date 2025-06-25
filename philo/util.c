@@ -6,7 +6,7 @@
 /*   By: abostrom <abostrom@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/24 08:18:21 by abostrom          #+#    #+#             */
-/*   Updated: 2025/06/24 22:27:00 by abostrom         ###   ########.fr       */
+/*   Updated: 2025/06/25 11:49:13 by abostrom         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,6 +37,7 @@ void	*malloc_zeroed(size_t size)
 
 void	print_state(t_philo *philo, t_state state, int index)
 {
+	static int64_t		start_time;
 	int					timestamp;
 	static char *const	state_names[] = {
 		"is sleeping",
@@ -47,11 +48,13 @@ void	print_state(t_philo *philo, t_state state, int index)
 		"died",
 	};
 
-	timestamp = (current_time() - philo->start_time) / 1000;
-	if (!philo->ended)
+	if (!start_time)
+		start_time = current_time();
+	timestamp = (current_time() - start_time + 500) / 1000;
+	if (!philo->stop)
 		printf("%d %d %s\n", timestamp, index + 1, state_names[state]);
 	if (state == STATE_DIED)
-		philo->ended = true;
+		philo->stop = true;
 }
 
 static int	parse_number(const char *str)

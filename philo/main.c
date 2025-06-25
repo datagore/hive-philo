@@ -6,10 +6,11 @@
 /*   By: abostrom <abostrom@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/13 23:32:05 by abostrom          #+#    #+#             */
-/*   Updated: 2025/06/24 23:13:47 by abostrom         ###   ########.fr       */
+/*   Updated: 2025/06/25 12:21:48 by abostrom         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,31 +18,45 @@
 
 #include "philo.h"
 
+static void	wait_for(int64_t duration)
+{
+	const int64_t	target_time = current_time() + duration;
+	int64_t			difference;
+
+	difference = duration;
+	while (difference > 0)
+	{
+		usleep(difference);
+		difference = target_time - current_time();
+	}
+}
+
 static void	*diner_thread(void *arg)
 {
 	t_diner *const	diner = (t_diner*) arg;
 
-	while (!diner->ended && diner->meal_count < diner->meal_limit)
+	while (!diner->stop)
 	{
 		diner->state++;
-		usleep(diner->predelay * (diner->meal_count == 0) + 500);
+		wait_for(diner->predelay * (diner->meal_count == 0) + 500);
 		pthread_mutex_lock(diner->fork1);
 		diner->state++;
 		if (diner->fork1 == diner->fork2)
 		{
-			usleep(diner->time_to_die);
+			wait_for(diner->time_to_die);
 			pthread_mutex_unlock(diner->fork1);
 			break ;
 		}
 		pthread_mutex_lock(diner->fork2);
 		diner->state += 2;
 		diner->meal_time = current_time();
-		usleep(diner->time_to_eat);
-		diner->meal_count++;
+		wait_for(diner->time_to_eat);
 		pthread_mutex_unlock(diner->fork1);
 		pthread_mutex_unlock(diner->fork2);
+		if (++diner->meal_count == diner->meal_limit)
+			break ;
 		diner->state++;
-		usleep(diner->time_to_sleep);
+		wait_for(diner->time_to_sleep);
 	}
 	return (NULL);
 }
@@ -54,7 +69,6 @@ static int	philo_begin(t_philo *p, int arguments[5])
 	p->count = arguments[0];
 	while (i < p->count)
 		pthread_mutex_init(&p->mutexes[i++], NULL);
-	p->start_time = current_time();
 	i = 0;
 	while (i < p->count)
 	{
@@ -62,7 +76,7 @@ static int	philo_begin(t_philo *p, int arguments[5])
 		p->diners[i].time_to_eat = 1000LL * arguments[2];
 		p->diners[i].time_to_sleep = 1000LL * arguments[3];
 		p->diners[i].meal_limit = arguments[4];
-		p->diners[i].meal_time = p->start_time;
+		p->diners[i].meal_time = current_time();
 		p->diners[i].fork1 = &p->mutexes[i * (i != p->count - 1)];
 		p->diners[i].fork2 = &p->mutexes[i + (i != p->count - 1)];
 		p->diners[i].predelay = (i % 2 == 0) * p->diners[i].time_to_eat;
@@ -82,7 +96,7 @@ static void	philo_loop(t_philo *p)
 	int64_t	state;
 
 	finished = 0;
-	while (p->started == p->count && !p->ended && finished < p->count)
+	while (!p->stop && p->started == p->count && finished < p->count)
 	{
 		i = 0;
 		finished = 0;
@@ -92,13 +106,13 @@ static void	philo_loop(t_philo *p)
 			state = p->diners[i].state;
 			if (p->diners[i].meal_count == p->diners[i].meal_limit)
 				finished++;
-			else if (p->diners[i].time_to_die + p->diners[i].meal_time <= now)
+			else if (p->diners[i].meal_time + p->diners[i].time_to_die <= now)
 				print_state(p, STATE_DIED, i);
 			while (p->states[i] < state)
 				print_state(p, ++p->states[i] % STATE_MAX, i);
 			i++;
 		}
-		usleep(1000);
+		usleep(500);
 	}
 }
 
@@ -108,7 +122,7 @@ static void	philo_end(t_philo *p)
 
 	i = 0;
 	while (i < p->started)
-		p->diners[i++].ended = true;
+		p->diners[i++].stop = true;
 	i = 0;
 	while (i < p->started)
 		pthread_join(p->threads[i++], NULL);
