@@ -6,7 +6,7 @@
 /*   By: abostrom <abostrom@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/24 08:18:21 by abostrom          #+#    #+#             */
-/*   Updated: 2025/06/25 11:49:13 by abostrom         ###   ########.fr       */
+/*   Updated: 2025/06/25 23:46:23 by abostrom         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,15 +24,6 @@ int64_t	current_time(void)
 
 	gettimeofday(&timeval, NULL);
 	return (timeval.tv_sec * 1000000 + timeval.tv_usec);
-}
-
-void	*malloc_zeroed(size_t size)
-{
-	void *const	data = malloc(size);
-
-	if (data != NULL)
-		memset(data, 0, size);
-	return (data);
 }
 
 void	print_state(t_philo *philo, t_state state, int index)
