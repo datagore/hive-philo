@@ -6,7 +6,7 @@
 /*   By: abostrom <abostrom@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/13 23:36:06 by abostrom          #+#    #+#             */
-/*   Updated: 2025/06/25 11:49:34 by abostrom         ###   ########.fr       */
+/*   Updated: 2025/06/25 17:52:52 by abostrom         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,6 +44,7 @@ struct s_diner
 	int64_t			time_to_sleep;	// Time it takes to sleep (µs)
 	pthread_mutex_t	*fork1;			// First fork to take
 	pthread_mutex_t	*fork2;			// Second fork to take
+	int				index;			// 1-based index of the diner
 };
 
 enum e_state
