@@ -6,7 +6,7 @@
 /*   By: abostrom <abostrom@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/26 09:29:37 by abostrom          #+#    #+#             */
-/*   Updated: 2025/06/26 11:12:24 by abostrom         ###   ########.fr       */
+/*   Updated: 2025/06/26 11:27:00 by abostrom         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,28 +20,28 @@
 // couldn't be created, the simulation ends immediately. All threads are told to
 // delay until an arbitrary starting time, to synchronize their actions.
 
-void	philo_begin(t_philo *p, int arguments[5])
+void	monitor_begin(t_monitor *m, int arguments[5])
 {
-	t_diner	*diner;
+	t_philo	*philo;
 	int		i;
 
 	i = 0;
-	p->count = arguments[0];
-	while (i < p->count)
-		pthread_mutex_init(&p->mutexes[i++], NULL);
-	pthread_mutex_init(&p->print_mutex, NULL);
+	m->count = arguments[0];
+	while (i < m->count)
+		pthread_mutex_init(&m->mutexes[i++], NULL);
+	pthread_mutex_init(&m->print_mutex, NULL);
 	i = 0;
-	p->start_time = current_time() + START_DELAY;
-	while (i < p->count)
+	m->start_time = current_time() + START_DELAY;
+	while (i < m->count)
 	{
-		diner = &p->diners[i];
-		diner_init(diner, p, i, arguments);
-		if (pthread_create(&diner->thread, NULL, diner_main, diner))
+		philo = &m->philos[i];
+		philo_init(philo, m, i, arguments);
+		if (pthread_create(&philo->thread, NULL, philo_main, philo))
 		{
 			printf("error: pthread_create failed\n");
 			break ;
 		}
-		p->started++;
+		m->started++;
 		i++;
 	}
 }
@@ -49,26 +49,26 @@ void	philo_begin(t_philo *p, int arguments[5])
 // Main monitoring loop. Continually monitors the philosophers, stopping when
 // all meals have been finished, or when a philosopher dies of starvation.
 
-void	philo_loop(t_philo *p)
+void	monitor_loop(t_monitor *m)
 {
 	int		i;
 	int		finished_count;
 	int64_t	now;
 
 	finished_count = 0;
-	while (p->started == p->count && finished_count < p->count)
+	while (m->started == m->count && finished_count < m->count)
 	{
 		i = 0;
 		finished_count = 0;
 		now = current_time();
-		while (i < p->count)
+		while (i < m->count)
 		{
-			if (p->diners[i].stop)
+			if (m->philos[i].stop)
 				return ;
-			if (p->diners[i].meal_count == p->diners[i].meal_limit)
+			if (m->philos[i].meal_count == m->philos[i].meal_limit)
 				finished_count++;
-			else if (p->diners[i].meal_time + p->diners[i].time_to_die <= now)
-				return (diner_print(&p->diners[i], STATE_DIED));
+			else if (m->philos[i].meal_time + m->philos[i].time_to_die <= now)
+				return (philo_print(&m->philos[i], STATE_DIED));
 			i++;
 		}
 		usleep(MONITOR_RATE);
@@ -78,18 +78,18 @@ void	philo_loop(t_philo *p)
 // End the simulation, stopping all philosopher threads that were successfully
 // created, waiting for them to finish, and then disposing of all mutexes.
 
-void	philo_end(t_philo *p)
+void	monitor_end(t_monitor *m)
 {
 	int	i;
 
 	i = 0;
-	while (i < p->started)
-		p->diners[i++].stop = true;
+	while (i < m->started)
+		m->philos[i++].stop = true;
 	i = 0;
-	while (i < p->started)
-		pthread_join(p->diners[i++].thread, NULL);
+	while (i < m->started)
+		pthread_join(m->philos[i++].thread, NULL);
 	i = 0;
-	while (i < p->count)
-		pthread_mutex_destroy(&p->mutexes[i++]);
-	pthread_mutex_destroy(&p->print_mutex);
+	while (i < m->count)
+		pthread_mutex_destroy(&m->mutexes[i++]);
+	pthread_mutex_destroy(&m->print_mutex);
 }

@@ -6,7 +6,7 @@
 /*   By: abostrom <abostrom@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/13 23:32:05 by abostrom          #+#    #+#             */
-/*   Updated: 2025/06/26 10:45:59 by abostrom         ###   ########.fr       */
+/*   Updated: 2025/06/26 11:25:59 by abostrom         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -74,23 +74,23 @@ static void	parse_arguments(int argc, char **argv, int arguments[5])
 
 int	main(int argc, char **argv)
 {
-	t_philo	philo;
-	int		arguments[5];
+	t_monitor	monitor;
+	int			arguments[5];
 
 	parse_arguments(argc, argv, arguments);
-	memset(&philo, 0, sizeof(philo));
-	philo.count = arguments[0];
-	philo.mutexes = malloc(philo.count * sizeof(pthread_mutex_t));
-	philo.diners = malloc(philo.count * sizeof(t_diner));
-	if (philo.mutexes == NULL || philo.diners == NULL)
+	memset(&monitor, 0, sizeof(monitor));
+	monitor.count = arguments[0];
+	monitor.mutexes = malloc(monitor.count * sizeof(pthread_mutex_t));
+	monitor.philos = malloc(monitor.count * sizeof(t_philo));
+	if (monitor.mutexes == NULL || monitor.philos == NULL)
 		printf("error: can't allocate memory\n");
 	else
 	{
-		memset(philo.diners, 0, philo.count * sizeof(t_diner));
-		philo_begin(&philo, arguments);
-		philo_loop(&philo);
-		philo_end(&philo);
+		memset(monitor.philos, 0, monitor.count * sizeof(t_philo));
+		monitor_begin(&monitor, arguments);
+		monitor_loop(&monitor);
+		monitor_end(&monitor);
 	}
-	free(philo.mutexes);
-	free(philo.diners);
+	free(monitor.mutexes);
+	free(monitor.philos);
 }

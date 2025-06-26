@@ -6,7 +6,7 @@
 /*   By: abostrom <abostrom@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/26 09:29:58 by abostrom          #+#    #+#             */
-/*   Updated: 2025/06/26 11:14:37 by abostrom         ###   ########.fr       */
+/*   Updated: 2025/06/26 11:27:19 by abostrom         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,19 +22,19 @@
 // simulation to put all philosophers in a synchronized alternating pattern.
 // This pre-delay is not added in the single-philosopher case.
 
-void	diner_init(t_diner *d, t_philo *p, int index, int arguments[5])
+void	philo_init(t_philo *philo, t_monitor *m, int idx, int arguments[5])
 {
-	d->index = index + 1;
-	d->time_to_die = 1000L * arguments[1];
-	d->time_to_eat = 1000L * arguments[2];
-	d->time_to_sleep = 1000L * arguments[3];
-	d->meal_limit = arguments[4];
-	d->meal_time = p->start_time;
-	d->fork1 = &p->mutexes[index * (index != p->count - 1)];
-	d->fork2 = &p->mutexes[index + (index != p->count - 1)];
-	d->print_mutex = &p->print_mutex;
-	d->predelay = (index % 2 == 0) * (p->count != 1) * d->time_to_eat / 2;
-	d->start_time = p->start_time;
+	philo->index = idx + 1;
+	philo->time_to_die = 1000L * arguments[1];
+	philo->time_to_eat = 1000L * arguments[2];
+	philo->time_to_sleep = 1000L * arguments[3];
+	philo->meal_limit = arguments[4];
+	philo->meal_time = m->start_time;
+	philo->fork1 = &m->mutexes[idx * (idx != m->count - 1)];
+	philo->fork2 = &m->mutexes[idx + (idx != m->count - 1)];
+	philo->print_mutex = &m->print_mutex;
+	philo->predelay = (idx % 2 == 0) * (m->count != 1) * philo->time_to_eat / 2;
+	philo->start_time = m->start_time;
 }
 
 // Special handling for the single-philosopher case. If there's only one
@@ -43,12 +43,12 @@ void	diner_init(t_diner *d, t_philo *p, int index, int arguments[5])
 // would occur. So instead we just wait for the philosopher to starve, since
 // they can't start eating without a second fork.
 
-static void	*handle_single_philo(t_diner *diner)
+static void	*handle_single_philo(t_philo *philo)
 {
-	wait_for(diner->time_to_die);
-	pthread_mutex_unlock(diner->fork1);
-	diner_print(diner, STATE_DIED);
-	diner->stop = true;
+	wait_for(philo->time_to_die);
+	pthread_mutex_unlock(philo->fork1);
+	philo_print(philo, STATE_DIED);
+	philo->stop = true;
 	return (NULL);
 }
 
@@ -58,30 +58,30 @@ static void	*handle_single_philo(t_diner *diner)
 // philosopher waiting for that fork, that philosopher is allowed to go first
 // (since it's likely "hungrier" than one that just finished eating/sleeping).
 
-void	*diner_main(void *arg)
+void	*philo_main(void *arg)
 {
-	t_diner *const	diner = (t_diner*) arg;
+	t_philo *const	philo = (t_philo*) arg;
 
-	wait_until(diner->start_time);
-	while (!diner->stop)
+	wait_until(philo->start_time);
+	while (!philo->stop)
 	{
-		diner_print(diner, STATE_THINKING);
-		wait_for(diner->predelay * (diner->meal_count == 0) + THINK_DELAY);
-		pthread_mutex_lock(diner->fork1);
-		diner_print(diner, STATE_TAKEN_A_FORK);
-		if (diner->fork1 == diner->fork2)
-			handle_single_philo(diner);
-		pthread_mutex_lock(diner->fork2);
-		diner_print(diner, STATE_TAKEN_A_FORK);
-		diner_print(diner, STATE_EATING);
-		diner->meal_time = current_time();
-		wait_for(diner->time_to_eat);
-		pthread_mutex_unlock(diner->fork1);
-		pthread_mutex_unlock(diner->fork2);
-		if (++diner->meal_count == diner->meal_limit)
+		philo_print(philo, STATE_THINKING);
+		wait_for(philo->predelay * (philo->meal_count == 0) + THINK_DELAY);
+		pthread_mutex_lock(philo->fork1);
+		philo_print(philo, STATE_TAKEN_A_FORK);
+		if (philo->fork1 == philo->fork2)
+			handle_single_philo(philo);
+		pthread_mutex_lock(philo->fork2);
+		philo_print(philo, STATE_TAKEN_A_FORK);
+		philo_print(philo, STATE_EATING);
+		philo->meal_time = current_time();
+		wait_for(philo->time_to_eat);
+		pthread_mutex_unlock(philo->fork1);
+		pthread_mutex_unlock(philo->fork2);
+		if (++philo->meal_count == philo->meal_limit)
 			break ;
-		diner_print(diner, STATE_SLEEPING);
-		wait_for(diner->time_to_sleep);
+		philo_print(philo, STATE_SLEEPING);
+		wait_for(philo->time_to_sleep);
 	}
 	return (NULL);
 }
@@ -90,7 +90,7 @@ void	*diner_main(void *arg)
 // avoid messages getting mixed up. When a death message has been printed, no
 // more messages are produced.
 
-void	diner_print(t_diner *diner, t_state state)
+void	philo_print(t_philo *philo, t_state state)
 {
 	int					timestamp;
 	static bool			death_printed;
@@ -102,10 +102,10 @@ void	diner_print(t_diner *diner, t_state state)
 		"died",
 	};
 
-	pthread_mutex_lock(diner->print_mutex);
-	timestamp = (current_time() - diner->start_time) / 1000;
+	pthread_mutex_lock(philo->print_mutex);
+	timestamp = (current_time() - philo->start_time) / 1000;
 	if (!death_printed)
-		printf("%d %d %s\n", timestamp, diner->index, state_names[state]);
+		printf("%d %d %s\n", timestamp, philo->index, state_names[state]);
 	death_printed = death_printed || state == STATE_DIED;
-	pthread_mutex_unlock(diner->print_mutex);
+	pthread_mutex_unlock(philo->print_mutex);
 }
