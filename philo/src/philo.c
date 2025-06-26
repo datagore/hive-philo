@@ -6,7 +6,7 @@
 /*   By: abostrom <abostrom@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/26 09:29:58 by abostrom          #+#    #+#             */
-/*   Updated: 2025/06/26 20:21:26 by abostrom         ###   ########.fr       */
+/*   Updated: 2025/06/26 20:42:31 by abostrom         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,7 +32,7 @@ void	philo_init(t_philo *p, t_monitor *m, int idx, int arguments[5])
 	p->fork1 = &m->mutexes[idx * (idx != m->thread_count - 1)];
 	p->fork2 = &m->mutexes[idx + (idx != m->thread_count - 1)];
 	p->print_mutex = &m->print_mutex;
-	p->predelay = (idx % 2 == 0) * (m->thread_count != 1) * p->time_to_eat / 2;
+	p->predelay = (idx % 2 == 1) * (m->thread_count != 1) * p->time_to_eat / 2;
 }
 
 // Special handling for the single-philosopher case. If there's only one
@@ -43,7 +43,7 @@ void	philo_init(t_philo *p, t_monitor *m, int idx, int arguments[5])
 
 static void	*handle_single_philo(t_philo *p)
 {
-	wait_for(p->time_to_die);
+	wait_for(p, p->time_to_die);
 	pthread_mutex_unlock(p->fork1);
 	philo_print(p, STATE_DIED);
 	p->stop = true;
@@ -57,8 +57,8 @@ static void	*handle_single_philo(t_philo *p)
 static void	wait_for_start(t_philo *p)
 {
 	while (!p->stop && !p->start_time)
-		wait_for(START_DELAY / 10);
-	wait_until(p->start_time);
+		wait_for(p, START_DELAY / 10);
+	wait_until(p, p->start_time);
 }
 
 // Main philosopher loop. Waits for a pre-determined start time, and then cycles
@@ -75,7 +75,7 @@ void	*philo_main(void *arg)
 	while (!p->stop)
 	{
 		philo_print(p, STATE_THINKING);
-		wait_for(p->predelay * (p->meal_count == 0) + THINK_DELAY);
+		wait_for(p, p->predelay * (p->meal_count == 0) + THINK_DELAY);
 		pthread_mutex_lock(p->fork1);
 		philo_print(p, STATE_TAKEN_A_FORK);
 		if (p->fork1 == p->fork2)
@@ -84,13 +84,13 @@ void	*philo_main(void *arg)
 		philo_print(p, STATE_TAKEN_A_FORK);
 		philo_print(p, STATE_EATING);
 		p->meal_time = current_time();
-		wait_for(p->time_to_eat);
+		wait_for(p, p->time_to_eat);
 		pthread_mutex_unlock(p->fork1);
 		pthread_mutex_unlock(p->fork2);
 		if (++p->meal_count == p->meal_limit)
 			break ;
 		philo_print(p, STATE_SLEEPING);
-		wait_for(p->time_to_sleep);
+		wait_for(p, p->time_to_sleep);
 	}
 	return (NULL);
 }

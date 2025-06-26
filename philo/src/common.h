@@ -6,7 +6,7 @@
 /*   By: abostrom <abostrom@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/13 23:36:06 by abostrom          #+#    #+#             */
-/*   Updated: 2025/06/26 20:18:19 by abostrom         ###   ########.fr       */
+/*   Updated: 2025/06/26 20:51:13 by abostrom         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,6 +19,7 @@
 # define MONITOR_RATE 500	// Rate at which the monitor thread runs (µs)
 # define START_DELAY 10000	// Delay before threads start running (µs)
 # define THINK_DELAY 250	// Small delay added to the think stage (µs)
+# define MAX_WAIT_STEP 500	// Maximum time a thread will wait in one go (µs)
 
 typedef struct s_monitor	t_monitor;	// State for the monitor thread
 typedef struct s_philo		t_philo;	// State for one philosopher
@@ -72,7 +73,7 @@ void	philo_print(t_philo *philo, t_state state);
 
 // timing.c
 int64_t	current_time(void);
-void	wait_until(int64_t target_time);
-void	wait_for(int64_t duration);
+void	wait_until(t_philo *philo, int64_t target_time);
+void	wait_for(t_philo *philo, int64_t duration);
 
 #endif
