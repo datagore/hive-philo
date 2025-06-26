@@ -1,6 +1,11 @@
+SRC := \
+	src/main.c \
+	src/monitor.c \
+	src/philo.c \
+	src/timing.c \
+
 NAME := philo
-SRC := main.c util.c
-HEADERS := philo.h
+HEADERS := src/common.h
 CFLAGS := -Wall -Wextra -Werror
 LDFLAGS := -pthread
 OBJ := $(SRC:%.c=%.o)
