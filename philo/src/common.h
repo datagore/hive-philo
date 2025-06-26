@@ -6,7 +6,7 @@
 /*   By: abostrom <abostrom@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/13 23:36:06 by abostrom          #+#    #+#             */
-/*   Updated: 2025/06/26 10:46:26 by abostrom         ###   ########.fr       */
+/*   Updated: 2025/06/26 11:13:44 by abostrom         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,6 +14,10 @@
 # define COMMON_H
 
 # include <pthread.h>
+
+# define MONITOR_RATE 500	// Rate at which the monitor thread runs (µs)
+# define START_DELAY 10000	// Delay before threads start running (µs)
+# define THINK_DELAY 250	// Small delay added to the think stage (µs)
 
 typedef struct s_philo	t_philo;	// State for the whole simulation
 typedef struct s_diner	t_diner;	// State for one diner

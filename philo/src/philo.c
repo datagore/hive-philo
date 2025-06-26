@@ -6,7 +6,7 @@
 /*   By: abostrom <abostrom@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/26 09:29:58 by abostrom          #+#    #+#             */
-/*   Updated: 2025/06/26 11:02:34 by abostrom         ###   ########.fr       */
+/*   Updated: 2025/06/26 11:14:37 by abostrom         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -66,7 +66,7 @@ void	*diner_main(void *arg)
 	while (!diner->stop)
 	{
 		diner_print(diner, STATE_THINKING);
-		wait_for(diner->predelay * (diner->meal_count == 0) + 250);
+		wait_for(diner->predelay * (diner->meal_count == 0) + THINK_DELAY);
 		pthread_mutex_lock(diner->fork1);
 		diner_print(diner, STATE_TAKEN_A_FORK);
 		if (diner->fork1 == diner->fork2)
@@ -92,9 +92,9 @@ void	*diner_main(void *arg)
 
 void	diner_print(t_diner *diner, t_state state)
 {
-	int						timestamp;
-	static bool				death_printed;
-	static char *const		state_names[] = {
+	int					timestamp;
+	static bool			death_printed;
+	static char *const	state_names[] = {
 		"is sleeping",
 		"is thinking",
 		"has taken a fork",

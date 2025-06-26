@@ -6,7 +6,7 @@
 /*   By: abostrom <abostrom@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/26 09:29:37 by abostrom          #+#    #+#             */
-/*   Updated: 2025/06/26 11:08:05 by abostrom         ###   ########.fr       */
+/*   Updated: 2025/06/26 11:12:24 by abostrom         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,7 +31,7 @@ void	philo_begin(t_philo *p, int arguments[5])
 		pthread_mutex_init(&p->mutexes[i++], NULL);
 	pthread_mutex_init(&p->print_mutex, NULL);
 	i = 0;
-	p->start_time = current_time() + 10000;
+	p->start_time = current_time() + START_DELAY;
 	while (i < p->count)
 	{
 		diner = &p->diners[i];
@@ -71,7 +71,7 @@ void	philo_loop(t_philo *p)
 				return (diner_print(&p->diners[i], STATE_DIED));
 			i++;
 		}
-		usleep(500);
+		usleep(MONITOR_RATE);
 	}
 }
 
