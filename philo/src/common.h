@@ -6,7 +6,7 @@
 /*   By: abostrom <abostrom@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/13 23:36:06 by abostrom          #+#    #+#             */
-/*   Updated: 2025/06/26 11:22:19 by abostrom         ###   ########.fr       */
+/*   Updated: 2025/06/26 12:20:21 by abostrom         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,6 +14,7 @@
 # define COMMON_H
 
 # include <pthread.h>
+# include <stdbool.h>
 
 # define MONITOR_RATE 500	// Rate at which the monitor thread runs (µs)
 # define START_DELAY 10000	// Delay before threads start running (µs)
