@@ -6,7 +6,7 @@
 /*   By: abostrom <abostrom@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/26 09:29:58 by abostrom          #+#    #+#             */
-/*   Updated: 2025/06/26 11:27:19 by abostrom         ###   ########.fr       */
+/*   Updated: 2025/06/26 19:51:04 by abostrom         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -70,7 +70,7 @@ void	*philo_main(void *arg)
 		pthread_mutex_lock(philo->fork1);
 		philo_print(philo, STATE_TAKEN_A_FORK);
 		if (philo->fork1 == philo->fork2)
-			handle_single_philo(philo);
+			return (handle_single_philo(philo));
 		pthread_mutex_lock(philo->fork2);
 		philo_print(philo, STATE_TAKEN_A_FORK);
 		philo_print(philo, STATE_EATING);
