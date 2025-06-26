@@ -6,7 +6,7 @@
 /*   By: abostrom <abostrom@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/26 09:29:58 by abostrom          #+#    #+#             */
-/*   Updated: 2025/06/26 19:51:04 by abostrom         ###   ########.fr       */
+/*   Updated: 2025/06/26 20:21:26 by abostrom         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,19 +22,17 @@
 // simulation to put all philosophers in a synchronized alternating pattern.
 // This pre-delay is not added in the single-philosopher case.
 
-void	philo_init(t_philo *philo, t_monitor *m, int idx, int arguments[5])
+void	philo_init(t_philo *p, t_monitor *m, int idx, int arguments[5])
 {
-	philo->index = idx + 1;
-	philo->time_to_die = 1000L * arguments[1];
-	philo->time_to_eat = 1000L * arguments[2];
-	philo->time_to_sleep = 1000L * arguments[3];
-	philo->meal_limit = arguments[4];
-	philo->meal_time = m->start_time;
-	philo->fork1 = &m->mutexes[idx * (idx != m->count - 1)];
-	philo->fork2 = &m->mutexes[idx + (idx != m->count - 1)];
-	philo->print_mutex = &m->print_mutex;
-	philo->predelay = (idx % 2 == 0) * (m->count != 1) * philo->time_to_eat / 2;
-	philo->start_time = m->start_time;
+	p->index = idx + 1;
+	p->time_to_die = 1000L * arguments[1];
+	p->time_to_eat = 1000L * arguments[2];
+	p->time_to_sleep = 1000L * arguments[3];
+	p->meal_limit = arguments[4];
+	p->fork1 = &m->mutexes[idx * (idx != m->thread_count - 1)];
+	p->fork2 = &m->mutexes[idx + (idx != m->thread_count - 1)];
+	p->print_mutex = &m->print_mutex;
+	p->predelay = (idx % 2 == 0) * (m->thread_count != 1) * p->time_to_eat / 2;
 }
 
 // Special handling for the single-philosopher case. If there's only one
@@ -43,13 +41,24 @@ void	philo_init(t_philo *philo, t_monitor *m, int idx, int arguments[5])
 // would occur. So instead we just wait for the philosopher to starve, since
 // they can't start eating without a second fork.
 
-static void	*handle_single_philo(t_philo *philo)
+static void	*handle_single_philo(t_philo *p)
 {
-	wait_for(philo->time_to_die);
-	pthread_mutex_unlock(philo->fork1);
-	philo_print(philo, STATE_DIED);
-	philo->stop = true;
+	wait_for(p->time_to_die);
+	pthread_mutex_unlock(p->fork1);
+	philo_print(p, STATE_DIED);
+	p->stop = true;
 	return (NULL);
+}
+
+// Wait for the simulation to start. The monitor thread sets a starting time
+// when all threads have been created. If one or more threads could not be
+// created, this loop exits and the program shuts down.
+
+static void	wait_for_start(t_philo *p)
+{
+	while (!p->stop && !p->start_time)
+		wait_for(START_DELAY / 10);
+	wait_until(p->start_time);
 }
 
 // Main philosopher loop. Waits for a pre-determined start time, and then cycles
@@ -60,28 +69,28 @@ static void	*handle_single_philo(t_philo *philo)
 
 void	*philo_main(void *arg)
 {
-	t_philo *const	philo = (t_philo*) arg;
+	t_philo *const	p = (t_philo*) arg;
 
-	wait_until(philo->start_time);
-	while (!philo->stop)
+	wait_for_start(p);
+	while (!p->stop)
 	{
-		philo_print(philo, STATE_THINKING);
-		wait_for(philo->predelay * (philo->meal_count == 0) + THINK_DELAY);
-		pthread_mutex_lock(philo->fork1);
-		philo_print(philo, STATE_TAKEN_A_FORK);
-		if (philo->fork1 == philo->fork2)
-			return (handle_single_philo(philo));
-		pthread_mutex_lock(philo->fork2);
-		philo_print(philo, STATE_TAKEN_A_FORK);
-		philo_print(philo, STATE_EATING);
-		philo->meal_time = current_time();
-		wait_for(philo->time_to_eat);
-		pthread_mutex_unlock(philo->fork1);
-		pthread_mutex_unlock(philo->fork2);
-		if (++philo->meal_count == philo->meal_limit)
+		philo_print(p, STATE_THINKING);
+		wait_for(p->predelay * (p->meal_count == 0) + THINK_DELAY);
+		pthread_mutex_lock(p->fork1);
+		philo_print(p, STATE_TAKEN_A_FORK);
+		if (p->fork1 == p->fork2)
+			return (handle_single_philo(p));
+		pthread_mutex_lock(p->fork2);
+		philo_print(p, STATE_TAKEN_A_FORK);
+		philo_print(p, STATE_EATING);
+		p->meal_time = current_time();
+		wait_for(p->time_to_eat);
+		pthread_mutex_unlock(p->fork1);
+		pthread_mutex_unlock(p->fork2);
+		if (++p->meal_count == p->meal_limit)
 			break ;
-		philo_print(philo, STATE_SLEEPING);
-		wait_for(philo->time_to_sleep);
+		philo_print(p, STATE_SLEEPING);
+		wait_for(p->time_to_sleep);
 	}
 	return (NULL);
 }
@@ -90,7 +99,7 @@ void	*philo_main(void *arg)
 // avoid messages getting mixed up. When a death message has been printed, no
 // more messages are produced.
 
-void	philo_print(t_philo *philo, t_state state)
+void	philo_print(t_philo *p, t_state state)
 {
 	int					timestamp;
 	static bool			death_printed;
@@ -102,10 +111,10 @@ void	philo_print(t_philo *philo, t_state state)
 		"died",
 	};
 
-	pthread_mutex_lock(philo->print_mutex);
-	timestamp = (current_time() - philo->start_time) / 1000;
+	pthread_mutex_lock(p->print_mutex);
+	timestamp = (current_time() - p->start_time) / 1000;
 	if (!death_printed)
-		printf("%d %d %s\n", timestamp, philo->index, state_names[state]);
+		printf("%d %d %s\n", timestamp, p->index, state_names[state]);
 	death_printed = death_printed || state == STATE_DIED;
-	pthread_mutex_unlock(philo->print_mutex);
+	pthread_mutex_unlock(p->print_mutex);
 }

@@ -6,7 +6,7 @@
 /*   By: abostrom <abostrom@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/13 23:36:06 by abostrom          #+#    #+#             */
-/*   Updated: 2025/06/26 12:20:21 by abostrom         ###   ########.fr       */
+/*   Updated: 2025/06/26 20:18:19 by abostrom         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,12 +26,11 @@ typedef enum e_state		t_state;	// Philosopher state type
 
 struct s_monitor
 {
-	int				count;			// Total number of philosophers
-	int				started;		// Number of threads that were started
-	pthread_mutex_t	print_mutex;	// Lock held while printing
-	pthread_mutex_t	*mutexes;		// Array of fork mutexes
-	t_philo			*philos;		// Array of per-philosopher data
-	int64_t			start_time;		// Timestamp of the simulation start (µs)
+	int				thread_count;		// Total number of threads
+	int				threads_created;	// Number of threads that were started
+	pthread_mutex_t	print_mutex;		// Lock held while printing
+	pthread_mutex_t	*mutexes;			// Array of fork mutexes
+	t_philo			*philos;			// Array of per-philosopher data
 };
 
 struct s_philo
@@ -41,6 +40,7 @@ struct s_philo
 	pthread_mutex_t	*fork1;			// First fork to take
 	pthread_mutex_t	*fork2;			// Second fork to take
 	pthread_mutex_t	*print_mutex;	// Lock held while printing
+	_Atomic int64_t	start_time;		// Timestamp of the simulation start (µs)
 	_Atomic bool	stop;			// Set to true when simulation should stop
 	_Atomic int64_t	meal_time;		// Timestamp of last meal (µs)
 	_Atomic int		meal_count;		// Number of meals the philosopher has had
@@ -49,7 +49,6 @@ struct s_philo
 	int64_t			time_to_die;	// Time it takes to starve (µs)
 	int64_t			time_to_eat;	// Time it takes to eat (µs)
 	int64_t			time_to_sleep;	// Time it takes to sleep (µs)
-	int64_t			start_time;		// Timestamp of the simulation start (µs)
 };
 
 enum e_state

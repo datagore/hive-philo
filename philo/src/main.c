@@ -6,7 +6,7 @@
 /*   By: abostrom <abostrom@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/13 23:32:05 by abostrom          #+#    #+#             */
-/*   Updated: 2025/06/26 11:25:59 by abostrom         ###   ########.fr       */
+/*   Updated: 2025/06/26 20:19:54 by abostrom         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -79,14 +79,14 @@ int	main(int argc, char **argv)
 
 	parse_arguments(argc, argv, arguments);
 	memset(&monitor, 0, sizeof(monitor));
-	monitor.count = arguments[0];
-	monitor.mutexes = malloc(monitor.count * sizeof(pthread_mutex_t));
-	monitor.philos = malloc(monitor.count * sizeof(t_philo));
+	monitor.thread_count = arguments[0];
+	monitor.mutexes = malloc(monitor.thread_count * sizeof(pthread_mutex_t));
+	monitor.philos = malloc(monitor.thread_count * sizeof(t_philo));
 	if (monitor.mutexes == NULL || monitor.philos == NULL)
 		printf("error: can't allocate memory\n");
 	else
 	{
-		memset(monitor.philos, 0, monitor.count * sizeof(t_philo));
+		memset(monitor.philos, 0, monitor.thread_count * sizeof(t_philo));
 		monitor_begin(&monitor, arguments);
 		monitor_loop(&monitor);
 		monitor_end(&monitor);
