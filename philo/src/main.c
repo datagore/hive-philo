@@ -6,7 +6,7 @@
 /*   By: abostrom <abostrom@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/13 23:32:05 by abostrom          #+#    #+#             */
-/*   Updated: 2025/06/26 20:19:54 by abostrom         ###   ########.fr       */
+/*   Updated: 2025/06/27 11:37:57 by abostrom         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,7 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "common.h"
+#include "philo.h"
 
 // Convenience function for printing an error message and exiting the program.
 

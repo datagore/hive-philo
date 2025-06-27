@@ -6,7 +6,7 @@
 /*   By: abostrom <abostrom@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/24 08:18:21 by abostrom          #+#    #+#             */
-/*   Updated: 2025/06/26 20:35:50 by abostrom         ###   ########.fr       */
+/*   Updated: 2025/06/27 11:38:22 by abostrom         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,7 +14,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#include "common.h"
+#include "philo.h"
 
 // Get the current time in microseconds, measured from some arbitrary point in
 // time.

@@ -6,7 +6,7 @@
 /*   By: abostrom <abostrom@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/26 09:29:37 by abostrom          #+#    #+#             */
-/*   Updated: 2025/06/26 20:23:41 by abostrom         ###   ########.fr       */
+/*   Updated: 2025/06/27 11:38:06 by abostrom         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,7 +14,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#include "common.h"
+#include "philo.h"
 
 // If all philosopher threads were successfully created, a starting time for the
 // simulation is set, which will eventually set the philosopher threads in

@@ -5,7 +5,7 @@ SRC := \
 	src/timing.c \
 
 NAME := philo
-HEADERS := src/common.h
+HEADERS := src/philo.h
 CFLAGS := -Wall -Wextra -Werror
 LDFLAGS := -pthread
 OBJ := $(SRC:%.c=%.o)
@@ -13,18 +13,18 @@ OBJ := $(SRC:%.c=%.o)
 all: $(NAME)
 
 clean:
-	$(RM) $(OBJ)
+	rm -f $(OBJ)
 
 fclean: clean
-	$(RM) $(NAME)
+	rm -f $(NAME)
 
 re: fclean all
 
 $(NAME): $(OBJ)
-	$(CC) $^ -o $@ $(LDFLAGS)
+	cc $^ -o $@ $(LDFLAGS)
 
 %.o: %.c $(HEADERS)
-	$(CC) -c $< -o $@ $(CFLAGS)
+	cc -c $< -o $@ $(CFLAGS)
 
 .PHONY: all clean fclean re
 .SECONDARY: $(OBJ)

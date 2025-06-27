@@ -6,14 +6,14 @@
 /*   By: abostrom <abostrom@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/26 09:29:58 by abostrom          #+#    #+#             */
-/*   Updated: 2025/06/26 20:42:31 by abostrom         ###   ########.fr       */
+/*   Updated: 2025/06/27 11:38:13 by abostrom         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <stdint.h>
 #include <stdio.h>
 
-#include "common.h"
+#include "philo.h"
 
 // Initialize one philosopher. Sets up die/eat/sleep timings and assigns forks.
 // For the last philosopher at the table, the order of the forks is swapped to
