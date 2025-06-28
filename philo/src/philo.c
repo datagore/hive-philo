@@ -6,7 +6,7 @@
 /*   By: abostrom <abostrom@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/26 09:29:58 by abostrom          #+#    #+#             */
-/*   Updated: 2025/06/27 11:38:13 by abostrom         ###   ########.fr       */
+/*   Updated: 2025/06/28 11:01:04 by abostrom         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,16 +30,17 @@ void	philo_init(t_philo *p, t_monitor *m, int idx, int arguments[5])
 	p->time_to_sleep = 1000L * arguments[3];
 	p->meal_limit = arguments[4];
 	p->fork1 = &m->mutexes[idx * (idx != m->thread_count - 1)];
-	p->fork2 = &m->mutexes[idx + (idx != m->thread_count - 1)];
+	if (m->thread_count > 1)
+		p->fork2 = &m->mutexes[idx + (idx != m->thread_count - 1)];
 	p->print_mutex = &m->print_mutex;
 	p->predelay = (idx % 2 == 1) * (m->thread_count != 1) * p->time_to_eat / 2;
 }
 
 // Special handling for the single-philosopher case. If there's only one
-// philosopher, then there's also only one fork, so the fork pointers refer to
-// the same mutex. If the philosopher were to try and take two forks, a deadlock
-// would occur. So instead we just wait for the philosopher to starve, since
-// they can't start eating without a second fork.
+// philosopher, then there's also only one fork, and the pointer to the second
+// fork will be NULL. Since there's no second fork to take, the philosopher
+// can't start eating, so they just sit around, fork in hand, until they die
+// of starvation.
 
 static void	*handle_single_philo(t_philo *p)
 {
@@ -78,7 +79,7 @@ void	*philo_main(void *arg)
 		wait_for(p, p->predelay * (p->meal_count == 0) + THINK_DELAY);
 		pthread_mutex_lock(p->fork1);
 		philo_print(p, STATE_TAKEN_A_FORK);
-		if (p->fork1 == p->fork2)
+		if (p->fork2 == NULL)
 			return (handle_single_philo(p));
 		pthread_mutex_lock(p->fork2);
 		philo_print(p, STATE_TAKEN_A_FORK);
