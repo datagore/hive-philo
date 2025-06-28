@@ -6,12 +6,12 @@
 /*   By: abostrom <abostrom@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/13 23:36:06 by abostrom          #+#    #+#             */
-/*   Updated: 2025/06/26 20:51:13 by abostrom         ###   ########.fr       */
+/*   Updated: 2025/06/28 15:37:46 by abostrom         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#ifndef COMMON_H
-# define COMMON_H
+#ifndef PHILO_H
+# define PHILO_H
 
 # include <pthread.h>
 # include <stdbool.h>
